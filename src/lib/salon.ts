@@ -40,6 +40,8 @@ export interface Stylist {
   /** Square team member ID, if this stylist is bookable online. */
   squareTeamMemberId?: string;
   specialties: string[];
+  /** Portrait in public/, e.g. "/photos/team/nadia.jpg". Falls back to a monogram. */
+  photo?: string;
 }
 
 export interface OpeningHours {
@@ -152,6 +154,15 @@ export const STYLISTS: Stylist[] = [
     specialties: ['Gloss', 'Bond repair', 'Blow-dry'],
   },
 ];
+
+/** "Nadia Okonkwo" -> "NO". Used for the monogram portrait fallback. */
+export function initials(name: string): string {
+  return name
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() ?? '')
+    .join('');
+}
 
 export function serviceById(id: string): Service | undefined {
   return SERVICES.find((s) => s.id === id);

@@ -65,6 +65,7 @@ of breaking the page:
 
 | Tier | Needs a key? | Needs network at request time? | Attribution |
 |---|---|---|---|
+| **`public/photos/`** | **no** | **no** | none — the salon owns them |
 | Unsplash | yes | yes | Photographer + Unsplash link |
 | **Commons (live)** | **no** | yes | **Author + licence, both linked — legally required** |
 | **Commons (cached)** | **no** | **no** | same, from the snapshot |
@@ -76,7 +77,30 @@ to keyword search. Categories are maintained by Commons editors, so the hit rate
 for actual salon interiors is far better than a full-text match, which happily
 returns product shots and diagrams.
 
-### Getting real photos in (`npm run fetch:photos`)
+### Adding the salon's own photography (do this one)
+
+Drop image files into `public/photos/` and they beat every remote source:
+
+```
+public/photos/
+  01-interior.jpg
+  02-colour-work.jpg
+  03-wash-room.jpg
+```
+
+No config, no rebuild of any source file. Order follows the filename, so number
+them. Alt text is derived from the filename (`02-colour-work.jpg` → "Colour
+work"); for better descriptions add `public/photos/captions.json`:
+
+```json
+{ "02-colour-work.jpg": "Hand-painted balayage on mid-lengths" }
+```
+
+Stylist portraits work the same way — set `photo` on a stylist in
+`src/lib/salon.ts` (e.g. `"/photos/team/nadia.jpg"`). Without one, the card
+renders a monogram on a tonal ground rather than an empty rectangle.
+
+### Borrowed photography (`npm run fetch:photos`)
 
 `src/data/commons-photos.json` ships **empty on purpose**. Run:
 
@@ -134,6 +158,7 @@ src/
     ├── salon.ts            single source of truth
     ├── jsonld.ts           HairSalon schema, derived from salon.ts
     ├── square.ts           Bookings API client
+    ├── localPhotos.ts      public/photos tier — the salon's own files
     ├── unsplash.ts         gallery source chain + Unsplash tier
     ├── wikimedia.ts        Commons live tier (categories, then search)
     ├── commonsCache.ts     Commons cached tier
@@ -147,9 +172,9 @@ tests/
 
 ## Before launch
 
-- [ ] Replace gallery imagery with real photography of the actual salon. Stock photos —
-      Unsplash or Commons — of *other people's* salons read as fake, and repeat clients
-      notice. Commons is the sane default for launch day, not the destination.
+- [ ] **Put real photography in `public/photos/`.** This is the one that matters. Stock
+      photos — Unsplash or Commons — of *other people's* salons read as fake, and repeat
+      clients notice. Borrowed imagery is a launch-day stopgap, not the destination.
 - [ ] **Run `npm run fetch:photos`.** The Commons path is covered by unit tests but has
       never run against real `api.php` traffic — that host was blocked by egress policy in
       the environment where this was built, so no real photo URLs could be captured. Until
