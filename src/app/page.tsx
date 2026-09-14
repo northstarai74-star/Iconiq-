@@ -12,16 +12,15 @@ import { getGallery } from '@/lib/unsplash';
 export const revalidate = 86400;
 
 export default async function HomePage() {
-  const photos = await getGallery('hair salon interior', 7);
-  const [hero, ...rest] = photos;
+  const photos = await getGallery('hair salon interior', 10);
 
   return (
     <>
       <Header />
       <main>
-        <Hero photo={hero} />
+        <Hero photos={photos.slice(0, 7)} />
         <Services />
-        <Gallery photos={rest} />
+        <Gallery photos={photos.slice(1)} />
         <Team />
         <Visit />
         <Map />
