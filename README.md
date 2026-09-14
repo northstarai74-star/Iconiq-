@@ -11,7 +11,8 @@ npm install
 npm run dev          # http://localhost:3000
 npm run build        # production build
 npm run typecheck    # tsc --noEmit
-npm test             # Commons response parsing (stubbed fetch, no network)
+npm test             # Commons parsing + fallthrough (stubbed fetch, no network)
+npm run fetch:photos # snapshot real Commons photos into src/data (needs network)
 ```
 
 ## Why these choices
@@ -62,20 +63,48 @@ Copy `.env.example` to `.env.local` and fill in what you have:
 any failure, so a blocked network or a revoked key degrades the gallery instead
 of breaking the page:
 
-| Tier | Needs a key? | Licence | Attribution |
+| Tier | Needs a key? | Needs network at request time? | Attribution |
 |---|---|---|---|
-| Unsplash | yes | Unsplash License | Photographer + Unsplash link |
-| **Wikimedia Commons** | **no** | CC-BY / CC-BY-SA / PD | **Author + licence name, both linked — legally required** |
-| Local placeholders | no | n/a | none |
+| Unsplash | yes | yes | Photographer + Unsplash link |
+| **Commons (live)** | **no** | yes | **Author + licence, both linked — legally required** |
+| **Commons (cached)** | **no** | **no** | same, from the snapshot |
+| Local placeholders | no | no | none |
+
+The live tier queries curated categories first — `Category:Hairdressing salons`,
+then `Category:Hairdressing`, then `Category:Beauty salons` — and only falls back
+to keyword search. Categories are maintained by Commons editors, so the hit rate
+for actual salon interiors is far better than a full-text match, which happily
+returns product shots and diagrams.
+
+### Getting real photos in (`npm run fetch:photos`)
+
+`src/data/commons-photos.json` ships **empty on purpose**. Run:
+
+```bash
+npm run fetch:photos                          # 6 photos, default categories
+npm run fetch:photos -- --count 8
+npm run fetch:photos -- --query "barber shop interior"
+```
+
+on a machine that can reach `commons.wikimedia.org`, and it writes verified
+entries into that file. Verified means, per photo: the thumbnail URL returns
+200 with an `image/*` content-type, and api.php supplied both an author and a
+licence. Anything failing is dropped, and if nothing survives the script exits
+non-zero without writing.
+
+**Never hand-edit that JSON.** A guessed URL renders as a broken tile; a guessed
+author or licence is a false CC attribution, which is a licensing violation
+rather than a cosmetic bug.
 
 Commons is what a fresh clone actually renders. Because those files are
 CC-licensed, `Gallery.tsx` shows the credit **always-visible rather than on
 hover** — a credit that needs a mouse is not attribution on a phone. Do not
 "clean up" that overlay without replacing the attribution somewhere visible.
 
-Commons parsing is covered by `tests/wikimedia.test.mts`, which stubs `fetch`
-with a realistic `api.php` payload: HTML-laden `extmetadata`, an SVG and a PDF
-that must be filtered out, and a file with no author.
+`tests/wikimedia.test.mts` covers this with a stubbed `fetch`: HTML-laden
+`extmetadata`, an SVG and a PDF that must be filtered out, a file with no
+author, the category generator, and the full fallthrough order including a 403
+on categories still reaching search.
 
 ### Unsplash rules honored in `src/lib/unsplash.ts`
 
@@ -106,9 +135,14 @@ src/
     ├── jsonld.ts           HairSalon schema, derived from salon.ts
     ├── square.ts           Bookings API client
     ├── unsplash.ts         gallery source chain + Unsplash tier
-    └── wikimedia.ts        Wikimedia Commons tier (no API key)
+    ├── wikimedia.ts        Commons live tier (categories, then search)
+    ├── commonsCache.ts     Commons cached tier
+    └── data/
+        └── commons-photos.json   written by npm run fetch:photos
+scripts/
+└── fetch-photos.mts        snapshots + verifies Commons photos
 tests/
-└── wikimedia.test.mts      Commons parsing, stubbed fetch
+└── wikimedia.test.mts      Commons parsing + fallthrough, stubbed fetch
 ```
 
 ## Before launch
@@ -116,9 +150,11 @@ tests/
 - [ ] Replace gallery imagery with real photography of the actual salon. Stock photos —
       Unsplash or Commons — of *other people's* salons read as fake, and repeat clients
       notice. Commons is the sane default for launch day, not the destination.
-- [ ] Confirm the Commons credit overlay renders against the live API. It is covered by
-      unit tests but was never exercised against real `api.php` traffic (the network was
-      blocked in the environment where this was built).
+- [ ] **Run `npm run fetch:photos`.** The Commons path is covered by unit tests but has
+      never run against real `api.php` traffic — that host was blocked by egress policy in
+      the environment where this was built, so no real photo URLs could be captured. Until
+      you run it (or deploy somewhere with outbound access), the gallery shows
+      placeholders. Commit the resulting JSON so CI and previews get real photos too.
 - [ ] Replace the sample address, phone, hours and stylists in `src/lib/salon.ts`.
 - [ ] Set `NEXT_PUBLIC_SITE_URL` to the real domain.
 - [ ] Validate the rendered JSON-LD in Google's Rich Results Test — markup can be valid

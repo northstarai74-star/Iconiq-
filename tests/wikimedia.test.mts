@@ -81,4 +81,103 @@ assert(second.credit?.name === 'Unknown author', 'falls back when author missing
 assert(second.alt === 'Barber shop chair', 'derives alt from the file title');
 assert(second.src.includes('Barber.png'), 'falls back to full URL with no thumb');
 
-console.log(process.exitCode ? '\nSOME CHECKS FAILED' : '\nALL COMMONS PARSING CHECKS PASSED');
+
+
+// ---------------------------------------------------------------------------
+// Category generator + fallthrough order
+// ---------------------------------------------------------------------------
+
+const CATEGORY_PAYLOAD = {
+  query: {
+    pages: [
+      {
+        pageid: 201,
+        title: 'File:Hairdressing_salon_Jastrzebie-Zdroj.png',
+        imageinfo: [{
+          url: 'https://upload.wikimedia.org/wikipedia/commons/1/12/Salon.png',
+          thumburl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/12/Salon.png/1600px-Salon.png',
+          descriptionurl: 'https://commons.wikimedia.org/wiki/File:Hairdressing_salon_Jastrzebie-Zdroj.png',
+          thumbwidth: 1600, thumbheight: 900, mime: 'image/png',
+          extmetadata: {
+            Artist: { value: 'Some Editor' },
+            LicenseShortName: { value: 'CC BY 3.0' },
+            LicenseUrl: { value: 'https://creativecommons.org/licenses/by/3.0' },
+          },
+        }],
+      },
+      {
+        pageid: 202,
+        title: 'File:Friseursalon_Tuebingen.jpg',
+        imageinfo: [{
+          url: 'https://upload.wikimedia.org/wikipedia/commons/2/2a/Friseur.jpg',
+          thumburl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/2a/Friseur.jpg/1600px-Friseur.jpg',
+          descriptionurl: 'https://commons.wikimedia.org/wiki/File:Friseursalon_Tuebingen.jpg',
+          thumbwidth: 1600, thumbheight: 1200, mime: 'image/jpeg',
+          extmetadata: { Artist: { value: 'Another Editor' }, LicenseShortName: { value: 'CC BY-SA 3.0' } },
+        }],
+      },
+      {
+        pageid: 203,
+        title: 'File:Third_salon.jpg',
+        imageinfo: [{
+          url: 'https://upload.wikimedia.org/wikipedia/commons/3/33/Third.jpg',
+          descriptionurl: 'https://commons.wikimedia.org/wiki/File:Third_salon.jpg',
+          mime: 'image/jpeg',
+          extmetadata: { Artist: { value: 'Ed' }, LicenseShortName: { value: 'PD' } },
+        }],
+      },
+    ],
+  },
+};
+
+console.log('\ncategory generator:');
+const calls: string[] = [];
+globalThis.fetch = (async (url: any) => {
+  calls.push(String(url));
+  return { ok: true, status: 200, json: async () => CATEGORY_PAYLOAD };
+}) as any;
+
+const { categoryCommons, getCommonsPhotos, SALON_CATEGORIES } =
+  await import('../src/lib/wikimedia.ts');
+
+calls.length = 0;
+const catPhotos = await categoryCommons('Hairdressing salons', 3);
+assert(calls[0].includes('generator=categorymembers'), 'uses the categorymembers generator');
+assert(calls[0].includes('gcmtitle=Category%3AHairdressing+salons'),
+  'prefixes a bare name with Category:');
+assert(calls[0].includes('gcmtype=file'), 'restricts to files');
+assert(catPhotos.length === 3, `maps all three category files (got ${catPhotos.length})`);
+assert(catPhotos[0].credit?.license === 'CC BY 3.0', 'reads licence from category results');
+
+console.log('lookup order:');
+calls.length = 0;
+const chained = await getCommonsPhotos('hair salon interior', 3);
+assert(calls.length === 1, `stops at the first category that satisfies (made ${calls.length} calls)`);
+assert(calls[0].includes(encodeURIComponent(SALON_CATEGORIES[0]).replace(/%20/g, '+')) ||
+       calls[0].includes('Hairdressing+salons'), 'tries Category:Hairdressing salons first');
+assert(chained.length === 3, 'returns the category photos');
+
+console.log('falls back to search when categories are empty:');
+calls.length = 0;
+globalThis.fetch = (async (url: any) => {
+  calls.push(String(url));
+  const isSearch = String(url).includes('generator=search');
+  return { ok: true, status: 200, json: async () => (isSearch ? PAYLOAD : { query: { pages: [] } }) };
+}) as any;
+const searched = await getCommonsPhotos('hair salon interior', 3);
+assert(calls.length === SALON_CATEGORIES.length + 1,
+  `tries every category then search (made ${calls.length} calls)`);
+assert(calls[calls.length - 1].includes('generator=search'), 'search is the final attempt');
+assert(searched.length === 2, 'returns the filtered search results');
+
+console.log('survives a category error:');
+calls.length = 0;
+globalThis.fetch = (async (url: any) => {
+  calls.push(String(url));
+  if (!String(url).includes('generator=search')) return { ok: false, status: 403, json: async () => ({}) };
+  return { ok: true, status: 200, json: async () => PAYLOAD };
+}) as any;
+const afterError = await getCommonsPhotos('hair salon interior', 3);
+assert(afterError.length === 2, 'a 403 on categories still reaches search');
+
+console.log(process.exitCode ? '\nSOME CHECKS FAILED' : '\nALL COMMONS CHECKS PASSED');

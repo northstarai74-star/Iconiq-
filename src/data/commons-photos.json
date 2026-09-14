@@ -1,0 +1,6 @@
+{
+  "note": "Populated by `npm run fetch:photos`. Empty by design: the file it writes must contain real Commons URLs, authors and licences fetched from api.php. Hand-writing entries risks broken images and — worse — false CC attribution.",
+  "fetchedAt": null,
+  "query": null,
+  "photos": []
+}

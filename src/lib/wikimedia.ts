@@ -63,29 +63,47 @@ function titleToAlt(title: string): string {
     .trim();
 }
 
-/**
- * Searches Commons for usable photographs.
- *
- * Filters to raster images: SVGs and PDFs live in the same File namespace and
- * are useless as gallery photography.
- */
-export async function searchCommons(
-  query: string,
-  count: number,
-): Promise<GalleryPhoto[]> {
-  const params = new URLSearchParams({
-    action: 'query',
-    format: 'json',
-    formatversion: '2',
-    generator: 'search',
-    gsrsearch: `${query} filetype:bitmap`,
-    gsrnamespace: '6', // File:
-    gsrlimit: String(Math.min(count * 3, 50)), // over-fetch; many get filtered
-    prop: 'imageinfo',
-    iiprop: 'url|extmetadata|mime',
-    iiurlwidth: '1600',
-  });
+/** Maps one api.php page object to a GalleryPhoto, or [] if unusable. */
+function toPhoto(page: CommonsPage): GalleryPhoto[] {
+  const info = page.imageinfo?.[0];
+  if (!info) return [];
+  // Raster photographs only: SVGs and PDFs share the File namespace and are
+  // useless as gallery photography.
+  if (!/^image\/(jpeg|png|webp)$/.test(info.mime ?? '')) return [];
 
+  const src = info.thumburl ?? info.url;
+  if (!src) return [];
+
+  const meta = info.extmetadata ?? {};
+  const author = stripHtml(meta.Artist?.value) || 'Unknown author';
+  const licence = stripHtml(meta.LicenseShortName?.value) || 'See file page';
+  const description = stripHtml(meta.ImageDescription?.value);
+
+  return [
+    {
+      id: `commons-${page.pageid}`,
+      src,
+      // Commons thumbs are a fixed rendered width, so there is no srcset to
+      // build the way Unsplash's Imgix URLs allow.
+      srcSet: '',
+      alt: description || titleToAlt(page.title),
+      blurHash: null,
+      width: info.thumbwidth ?? 1600,
+      height: info.thumbheight ?? 1067,
+      credit: {
+        name: author,
+        profileUrl: info.descriptionurl,
+        photoUrl: info.descriptionurl,
+        source: 'Wikimedia Commons' as const,
+        license: licence,
+        licenseUrl: stripHtml(meta.LicenseUrl?.value) || info.descriptionurl,
+      },
+      trackDownload: null,
+    } satisfies GalleryPhoto,
+  ];
+}
+
+async function queryCommons(params: URLSearchParams): Promise<GalleryPhoto[]> {
   const res = await fetch(`${ENDPOINT}?${params}`, {
     headers: { 'User-Agent': USER_AGENT, Accept: 'application/json' },
     next: { revalidate: 60 * 60 * 24 },
@@ -94,45 +112,82 @@ export async function searchCommons(
   if (!res.ok) throw new Error(`Commons responded ${res.status}`);
 
   const data = (await res.json()) as { query?: { pages?: CommonsPage[] } };
-  const pages = data.query?.pages ?? [];
+  return (data.query?.pages ?? []).flatMap(toPhoto);
+}
 
-  return pages
-    .flatMap((page) => {
-      const info = page.imageinfo?.[0];
-      if (!info) return [];
-      // Raster photographs only.
-      if (!/^image\/(jpeg|png|webp)$/.test(info.mime ?? '')) return [];
+const IMAGE_PROPS = {
+  action: 'query',
+  format: 'json',
+  formatversion: '2',
+  prop: 'imageinfo',
+  iiprop: 'url|extmetadata|mime',
+  iiurlwidth: '1600',
+};
 
-      const src = info.thumburl ?? info.url;
-      if (!src) return [];
+/**
+ * Full-text search across Commons.
+ *
+ * Flexible but noisy: it matches file descriptions, so a query like
+ * "hair salon" also returns product shots and diagrams.
+ */
+export async function searchCommons(query: string, count: number): Promise<GalleryPhoto[]> {
+  const params = new URLSearchParams({
+    ...IMAGE_PROPS,
+    generator: 'search',
+    gsrsearch: `${query} filetype:bitmap`,
+    gsrnamespace: '6', // File:
+    gsrlimit: String(Math.min(count * 3, 50)), // over-fetch; many get filtered
+  });
+  return (await queryCommons(params)).slice(0, count);
+}
 
-      const meta = info.extmetadata ?? {};
-      const author = stripHtml(meta.Artist?.value) || 'Unknown author';
-      const licence = stripHtml(meta.LicenseShortName?.value) || 'See file page';
-      const description = stripHtml(meta.ImageDescription?.value);
+/**
+ * Files from a Commons category, e.g. "Category:Hairdressing salons".
+ *
+ * Preferred over search: categories are curated by Commons editors, so the
+ * hit rate for actual salon interiors is far higher than a keyword match.
+ */
+export async function categoryCommons(
+  category: string,
+  count: number,
+): Promise<GalleryPhoto[]> {
+  const params = new URLSearchParams({
+    ...IMAGE_PROPS,
+    generator: 'categorymembers',
+    gcmtitle: category.startsWith('Category:') ? category : `Category:${category}`,
+    gcmtype: 'file',
+    gcmlimit: String(Math.min(count * 4, 100)),
+  });
+  return (await queryCommons(params)).slice(0, count);
+}
 
-      return [
-        {
-          id: `commons-${page.pageid}`,
-          src,
-          // Commons thumbs are a fixed rendered width, so there is no srcset
-          // to build the way Unsplash's Imgix URLs allow.
-          srcSet: '',
-          alt: description || titleToAlt(page.title),
-          blurHash: null,
-          width: info.thumbwidth ?? 1600,
-          height: info.thumbheight ?? 1067,
-          credit: {
-            name: author,
-            profileUrl: info.descriptionurl,
-            photoUrl: info.descriptionurl,
-            source: 'Wikimedia Commons' as const,
-            license: licence,
-            licenseUrl: stripHtml(meta.LicenseUrl?.value) || info.descriptionurl,
-          },
-          trackDownload: null,
-        } satisfies GalleryPhoto,
-      ];
-    })
-    .slice(0, count);
+/** Categories tried in order; the first that yields enough photos wins. */
+export const SALON_CATEGORIES = [
+  'Category:Hairdressing salons',
+  'Category:Hairdressing',
+  'Category:Beauty salons',
+];
+
+/**
+ * Best-effort Commons lookup: curated categories first, keyword search as the
+ * backstop. Returns [] rather than throwing so callers can fall through.
+ */
+export async function getCommonsPhotos(
+  query: string,
+  count: number,
+): Promise<GalleryPhoto[]> {
+  for (const category of SALON_CATEGORIES) {
+    try {
+      const photos = await categoryCommons(category, count);
+      if (photos.length >= Math.min(count, 3)) return photos;
+    } catch {
+      // Try the next category rather than giving up on Commons entirely.
+    }
+  }
+
+  try {
+    return await searchCommons(query, count);
+  } catch {
+    return [];
+  }
 }

@@ -139,11 +139,14 @@ const FALLBACK: GalleryPhoto[] = [
 /**
  * Fetches gallery imagery, preferring the best source available.
  *
- *   1. Unsplash  -- only when UNSPLASH_ACCESS_KEY is set. Best quality and
- *                   responsive srcsets, but needs a provisioned key.
- *   2. Commons   -- no key required, so this is what a fresh clone actually
- *                   renders. CC-licensed, hence mandatory attribution.
- *   3. Local     -- generated placeholders, for offline dev and CI.
+ *   1. Unsplash      -- only when UNSPLASH_ACCESS_KEY is set. Best quality and
+ *                       responsive srcsets, but needs a provisioned key.
+ *   2. Commons live  -- no key required. Curated categories first, keyword
+ *                       search as backstop. CC-licensed: attribution required.
+ *   3. Commons cache -- real photos snapshotted by `npm run fetch:photos`.
+ *                       Covers request-time environments with no outbound
+ *                       network (locked-down CI, air-gapped previews).
+ *   4. Local         -- generated placeholders, for offline dev with no cache.
  *
  * Each tier falls through on failure, so a blocked network or a revoked key
  * degrades the gallery rather than breaking the page.
@@ -157,14 +160,25 @@ export async function getGallery(
 
   if (process.env.DISABLE_WIKIMEDIA !== '1') {
     try {
-      const { searchCommons } = await import('./wikimedia');
-      const fromCommons = await searchCommons(query, count);
-      if (fromCommons.length) return fromCommons;
+      const { getCommonsPhotos } = await import('./wikimedia');
+      const live = await getCommonsPhotos(query, count);
+      if (live.length) return live;
     } catch (error) {
-      console.warn('[gallery] Commons unavailable, using placeholders:', error);
+      console.warn('[gallery] Commons lookup failed:', error);
     }
   }
 
+  const { getCachedCommonsPhotos } = await import('./commonsCache');
+  const cached = getCachedCommonsPhotos(count);
+  if (cached.length) {
+    console.info(`[gallery] using ${cached.length} cached Commons photos`);
+    return cached;
+  }
+
+  console.warn(
+    '[gallery] no Commons photos available — rendering placeholders. ' +
+      'Run `npm run fetch:photos` on a connected machine to cache real ones.',
+  );
   return FALLBACK.slice(0, count);
 }
 

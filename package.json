@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
-    "test": "node --experimental-strip-types --conditions=react-server tests/wikimedia.test.mts"
+    "test": "node --experimental-strip-types --conditions=react-server tests/wikimedia.test.mts",
+    "fetch:photos": "node --experimental-strip-types scripts/fetch-photos.mts"
   },
   "dependencies": {
     "lucide-react": "^1.45.0",
