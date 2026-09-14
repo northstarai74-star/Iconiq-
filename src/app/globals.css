@@ -1,0 +1,80 @@
+@import 'tailwindcss';
+
+/*
+ * Tailwind v4 design tokens.
+ *
+ * Palette is warm neutral + a single muted accent. Salon sites drown in rose
+ * gold gradients; restraint is what reads as expensive. The accent is used for
+ * exactly one thing per screen -- the booking action.
+ */
+@theme {
+  /* next/font injects --font-*-loaded in layout.tsx; the literal names are
+     kept as the fallback so styles still read correctly if fonts fail. */
+  --font-display: var(--font-display-loaded), Georgia, 'Times New Roman', serif;
+  --font-sans: var(--font-sans-loaded), ui-sans-serif, system-ui, -apple-system, sans-serif;
+
+  --color-bone-50: #faf8f6;
+  --color-bone-100: #f3efea;
+  --color-bone-200: #e7ded6;
+  --color-bone-300: #d5c8bc;
+
+  --color-ink-400: #8a8078;
+  --color-ink-600: #565049;
+  --color-ink-800: #2b2724;
+  --color-ink-900: #1a1715;
+
+  --color-accent-500: #8c6b52;
+  --color-accent-600: #74573f;
+
+  --tracking-eyebrow: 0.35em;
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    background-color: var(--color-bone-50);
+    color: var(--color-ink-800);
+    font-family: var(--font-sans);
+    font-weight: 400;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-display);
+    font-weight: 300;
+    letter-spacing: -0.01em;
+    line-height: 1.05;
+  }
+
+  /* Visible focus for keyboard users -- salon clients book on phones and
+     screen readers alike, and the default Tailwind reset removes outlines. */
+  :focus-visible {
+    outline: 2px solid var(--color-accent-500);
+    outline-offset: 3px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+@utility eyebrow {
+  font-family: var(--font-sans);
+  font-weight: 200;
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-eyebrow);
+  font-size: 0.7rem;
+}
