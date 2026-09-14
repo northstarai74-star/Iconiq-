@@ -20,7 +20,10 @@ export interface Service {
   id: ServiceId;
   name: string;
   blurb: string;
-  /** Starting price in whole currency units. Displayed as "from $X". */
+  /**
+   * Starting price in whole currency units, formatted with SALON.currency.
+   * PLACEHOLDER figures -- replace with the salon's real menu before launch.
+   */
   fromPrice: number;
   /** Scheduled duration in minutes -- also sent to Square as the segment length. */
   durationMinutes: number;
@@ -56,31 +59,37 @@ export const SALON = {
   name: 'Iconiq Salon',
   tagline: 'Hair that behaves on the second day too.',
   established: 2019,
-  neighbourhood: 'SoHo, New York',
-  /** Schema.org priceRange: $, $$, $$$ or $$$$. */
-  priceRange: '$$',
-  currency: 'USD',
-  timeZone: 'America/New_York',
-  phone: '+1-555-0142',
+  neighbourhood: 'Nawanshahr, Punjab',
+  /** Schema.org priceRange: a symbol run or a text range. */
+  priceRange: '₹₹',
+  currency: 'INR',
+  timeZone: 'Asia/Kolkata',
+  // PLACEHOLDER -- replace with the salon's real number before launch.
+  phone: '+91 00000 00000',
   email: 'hello@iconiq.salon',
   address: {
-    street: '142 Mercer St',
-    locality: 'New York',
-    region: 'NY',
-    postalCode: '10012',
-    country: 'US',
+    street: 'Kulam Road, near Shiv Mandir',
+    locality: 'Nawanshahr',
+    region: 'Punjab',
+    postalCode: '144514',
+    country: 'IN',
   },
-  geo: { latitude: 40.7243, longitude: -73.999 },
+  // Nawanshahr town centroid (31°07'N 76°08'E). Refine to the shopfront
+  // once the exact pin is known -- this places the marker in the right town,
+  // not on the right doorstep.
+  geo: { latitude: 31.1167, longitude: 76.1333 },
   social: {
     instagram: 'https://www.instagram.com/iconiqsalon',
   },
 } as const;
 
 export const HOURS: OpeningHours[] = [
-  { days: ['Tuesday', 'Wednesday', 'Thursday', 'Friday'], opens: '10:00', closes: '20:00' },
-  { days: ['Saturday'], opens: '09:00', closes: '18:00' },
-  { days: ['Sunday'], opens: '11:00', closes: '17:00' },
-  // Monday intentionally absent -- closed days are expressed by omission.
+  // Open seven days, 9am-7pm. A closed day would be expressed by omission.
+  {
+    days: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
+    opens: '09:00',
+    closes: '19:00',
+  },
 ];
 
 export const SERVICES: Service[] = [
@@ -88,7 +97,7 @@ export const SERVICES: Service[] = [
     id: 'cut-style',
     name: 'Cut & Style',
     blurb: 'A consultation first, scissors second. Cut dry so we shape what you actually have.',
-    fromPrice: 55,
+    fromPrice: 400,
     durationMinutes: 45,
     icon: 'scissors',
   },
@@ -96,7 +105,7 @@ export const SERVICES: Service[] = [
     id: 'balayage',
     name: 'Balayage',
     blurb: 'Hand-painted, grown-out-gracefully colour. No harsh regrowth line at week six.',
-    fromPrice: 180,
+    fromPrice: 4500,
     durationMinutes: 180,
     icon: 'sparkles',
   },
@@ -104,7 +113,7 @@ export const SERVICES: Service[] = [
     id: 'gloss-treatment',
     name: 'Gloss & Treatment',
     blurb: 'Bond-building gloss that resets shine between colour appointments.',
-    fromPrice: 70,
+    fromPrice: 1800,
     durationMinutes: 60,
     icon: 'droplet',
   },
@@ -112,7 +121,7 @@ export const SERVICES: Service[] = [
     id: 'colour-root',
     name: 'Root Colour',
     blurb: 'Single-process coverage matched to your existing tone.',
-    fromPrice: 95,
+    fromPrice: 1200,
     durationMinutes: 90,
     icon: 'wand',
   },
@@ -120,7 +129,7 @@ export const SERVICES: Service[] = [
     id: 'blow-dry',
     name: 'Blow-dry',
     blurb: 'Thirty minutes, in and out, good for three days.',
-    fromPrice: 45,
+    fromPrice: 350,
     durationMinutes: 30,
     icon: 'wind',
   },
@@ -128,7 +137,7 @@ export const SERVICES: Service[] = [
     id: 'bridal',
     name: 'Bridal & Events',
     blurb: 'Trial, timeline and day-of styling. We travel within Manhattan.',
-    fromPrice: 250,
+    fromPrice: 12000,
     durationMinutes: 120,
     icon: 'flower',
   },
@@ -169,7 +178,7 @@ export function serviceById(id: string): Service | undefined {
 }
 
 export function formatPrice(amount: number): string {
-  return new Intl.NumberFormat('en-US', {
+  return new Intl.NumberFormat('en-IN', {
     style: 'currency',
     currency: SALON.currency,
     maximumFractionDigits: 0,

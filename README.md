@@ -180,7 +180,14 @@ tests/
       the environment where this was built, so no real photo URLs could be captured. Until
       you run it (or deploy somewhere with outbound access), the gallery shows
       placeholders. Commit the resulting JSON so CI and previews get real photos too.
-- [ ] Replace the sample address, phone, hours and stylists in `src/lib/salon.ts`.
+- [ ] **Replace the placeholder phone number** (`+91 00000 00000`) in `src/lib/salon.ts`. It is
+      deliberately un-dialable rather than an invented number that might belong to someone.
+- [ ] **Confirm the service prices.** The ₹ figures are placeholders scaled from the original
+      sample menu, not the salon's real rates.
+- [ ] Refine `geo` to the shopfront. It currently holds the Nawanshahr town centroid
+      (31.1167, 76.1333), which puts the map marker in the right town, not on the right
+      doorstep. Drop a pin in Google Maps and copy the exact coordinates.
+- [ ] Replace the sample stylists in `src/lib/salon.ts`.
 - [ ] Set `NEXT_PUBLIC_SITE_URL` to the real domain.
 - [ ] Validate the rendered JSON-LD in Google's Rich Results Test — markup can be valid
       Schema.org and still fail Google's stricter eligibility rules.

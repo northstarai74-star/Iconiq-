@@ -69,10 +69,6 @@ export function Visit() {
                 </dd>
               </div>
             ))}
-            <div className="flex justify-between py-3">
-              <dt className="text-bone-300/80">Mon</dt>
-              <dd className="text-bone-300/60">Closed</dd>
-            </div>
           </dl>
         </div>
       </div>

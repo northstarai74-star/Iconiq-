@@ -2,6 +2,7 @@ import { Footer } from '@/components/Footer';
 import { Gallery } from '@/components/Gallery';
 import { Header } from '@/components/Header';
 import { Hero } from '@/components/Hero';
+import { Map } from '@/components/Map';
 import { Services } from '@/components/Services';
 import { Team } from '@/components/Team';
 import { Visit } from '@/components/Visit';
@@ -23,6 +24,7 @@ export default async function HomePage() {
         <Gallery photos={rest} />
         <Team />
         <Visit />
+        <Map />
       </main>
       <Footer />
     </>
