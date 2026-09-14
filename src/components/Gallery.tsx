@@ -1,9 +1,15 @@
 import type { GalleryPhoto } from '@/lib/unsplash';
 
 /**
- * Unsplash requires a visible photographer credit plus a link back to Unsplash
- * when images come from the API. Fallback placeholders carry no credit, so the
- * attribution block only renders when `credit` is present.
+ * Attribution is a legal requirement, not decoration:
+ *   - Unsplash API usage requires photographer + Unsplash links.
+ *   - Wikimedia Commons files are CC-BY / CC-BY-SA, so the author AND the
+ *     licence name must both be visible and linked.
+ * Locally generated placeholders carry no credit, so the block only renders
+ * when `credit` is present.
+ *
+ * The credit sits always-visible (not hover-only) for Commons photos --
+ * a credit that requires a mouse hover is not attribution on a phone.
  */
 export function Gallery({ photos }: { photos: GalleryPhoto[] }) {
   if (!photos.length) return null;
@@ -38,26 +44,39 @@ export function Gallery({ photos }: { photos: GalleryPhoto[] }) {
 
               {photo.credit && (
                 <span
-                  className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t
-                             from-black/60 to-transparent p-3 text-[0.65rem] text-white/0
-                             transition group-hover:text-white/90"
+                  className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70
+                             to-transparent px-3 pb-2 pt-8 text-[0.65rem] leading-tight
+                             text-white/85"
                 >
                   <a
                     href={photo.credit.profileUrl}
                     target="_blank"
                     rel="noopener noreferrer nofollow"
-                    className="pointer-events-auto underline-offset-2 hover:underline"
+                    className="underline-offset-2 hover:underline"
                   >
                     {photo.credit.name}
-                  </a>{' '}
-                  on{' '}
+                  </a>
+                  {photo.credit.license && (
+                    <>
+                      {' · '}
+                      <a
+                        href={photo.credit.licenseUrl}
+                        target="_blank"
+                        rel="noopener noreferrer nofollow license"
+                        className="underline-offset-2 hover:underline"
+                      >
+                        {photo.credit.license}
+                      </a>
+                    </>
+                  )}{' '}
+                  <span className="text-white/60">via</span>{' '}
                   <a
                     href={photo.credit.photoUrl}
                     target="_blank"
                     rel="noopener noreferrer nofollow"
-                    className="pointer-events-auto underline-offset-2 hover:underline"
+                    className="underline-offset-2 hover:underline"
                   >
-                    Unsplash
+                    {photo.credit.source}
                   </a>
                 </span>
               )}

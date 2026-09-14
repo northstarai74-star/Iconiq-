@@ -7,6 +7,8 @@ const nextConfig: NextConfig = {
     remotePatterns: [
       { protocol: 'https', hostname: 'images.unsplash.com' },
       { protocol: 'https', hostname: 'images.pexels.com' },
+      // Wikimedia Commons serves files and thumbnails from upload.wikimedia.org
+      { protocol: 'https', hostname: 'upload.wikimedia.org' },
     ],
   },
 };

@@ -19,6 +19,18 @@
 
 import 'server-only';
 
+export interface PhotoCredit {
+  /** Photographer or Commons author. */
+  name: string;
+  profileUrl: string;
+  photoUrl: string;
+  /** Which service the photo came from -- rendered in the credit line. */
+  source: 'Unsplash' | 'Wikimedia Commons';
+  /** Required for Commons (CC-BY / CC-BY-SA); Unsplash needs no licence name. */
+  license?: string;
+  licenseUrl?: string;
+}
+
 export interface GalleryPhoto {
   id: string;
   src: string;
@@ -27,7 +39,7 @@ export interface GalleryPhoto {
   blurHash: string | null;
   width: number;
   height: number;
-  credit: { name: string; profileUrl: string; photoUrl: string } | null;
+  credit: PhotoCredit | null;
   /** Unsplash download-tracking endpoint; null for fallback images. */
   trackDownload: string | null;
 }
@@ -71,21 +83,39 @@ const PLACEHOLDER_TONES: Array<[string, string]> = [
   ['#d8cfc7', '#b2a091'],
 ];
 
-function placeholderSvg(from: string, to: string, label: string): string {
+/** SVG is XML: an unescaped & or < in a label breaks the whole document. */
+function xmlEscape(text: string): string {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
+/**
+ * `label` is optional: the hero renders full-bleed behind the headline, so a
+ * centred caption there collides with the h1. Omit it for that slot.
+ */
+function placeholderSvg(from: string, to: string, label?: string): string {
+  const caption = label
+    ? `<text x="50%" y="50%" text-anchor="middle" dominant-baseline="middle" ` +
+      `font-family="Georgia,serif" font-size="44" fill="#6b5d52" opacity="0.55">` +
+      `${xmlEscape(label)}</text>`
+    : '';
+
   const svg =
     `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1067">` +
     `<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1">` +
     `<stop offset="0%" stop-color="${from}"/><stop offset="100%" stop-color="${to}"/>` +
     `</linearGradient></defs>` +
     `<rect width="1600" height="1067" fill="url(#g)"/>` +
-    `<text x="50%" y="50%" text-anchor="middle" dominant-baseline="middle" ` +
-    `font-family="Georgia,serif" font-size="44" fill="#6b5d52" opacity="0.55">${label}</text>` +
+    caption +
     `</svg>`;
   return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
 }
 
 const FALLBACK: GalleryPhoto[] = [
-  'Salon interior',
+  // Index 0 is consumed as the hero background, so it carries no caption.
+  '',
   'Colour work',
   'Cut & finish',
   'The wash room',
@@ -93,12 +123,11 @@ const FALLBACK: GalleryPhoto[] = [
   'Styling detail',
 ].map((label, i) => {
   const [from, to] = PLACEHOLDER_TONES[i % PLACEHOLDER_TONES.length];
-  const src = placeholderSvg(from, to, label);
   return {
     id: `placeholder-${i}`,
-    src,
+    src: placeholderSvg(from, to, label || undefined),
     srcSet: '',
-    alt: `${label} — placeholder image`,
+    alt: label ? `${label} — placeholder image` : 'Salon interior — placeholder image',
     blurHash: null,
     width: 1600,
     height: 1067,
@@ -108,15 +137,41 @@ const FALLBACK: GalleryPhoto[] = [
 });
 
 /**
- * Fetches gallery imagery. Revalidates daily -- salon galleries do not need to
- * be fresher than that, and it keeps us far inside the rate limit.
+ * Fetches gallery imagery, preferring the best source available.
+ *
+ *   1. Unsplash  -- only when UNSPLASH_ACCESS_KEY is set. Best quality and
+ *                   responsive srcsets, but needs a provisioned key.
+ *   2. Commons   -- no key required, so this is what a fresh clone actually
+ *                   renders. CC-licensed, hence mandatory attribution.
+ *   3. Local     -- generated placeholders, for offline dev and CI.
+ *
+ * Each tier falls through on failure, so a blocked network or a revoked key
+ * degrades the gallery rather than breaking the page.
  */
 export async function getGallery(
   query = 'hair salon interior',
   count = 6,
 ): Promise<GalleryPhoto[]> {
+  const fromUnsplash = await tryUnsplash(query, count);
+  if (fromUnsplash.length) return fromUnsplash;
+
+  if (process.env.DISABLE_WIKIMEDIA !== '1') {
+    try {
+      const { searchCommons } = await import('./wikimedia');
+      const fromCommons = await searchCommons(query, count);
+      if (fromCommons.length) return fromCommons;
+    } catch (error) {
+      console.warn('[gallery] Commons unavailable, using placeholders:', error);
+    }
+  }
+
+  return FALLBACK.slice(0, count);
+}
+
+/** Returns [] rather than throwing, so getGallery can just fall through. */
+async function tryUnsplash(query: string, count: number): Promise<GalleryPhoto[]> {
   const key = process.env.UNSPLASH_ACCESS_KEY;
-  if (!key) return FALLBACK.slice(0, count);
+  if (!key) return [];
 
   try {
     const res = await fetch(
@@ -128,10 +183,10 @@ export async function getGallery(
       },
     );
 
-    if (!res.ok) return FALLBACK.slice(0, count);
+    if (!res.ok) return [];
 
     const { results } = (await res.json()) as { results: UnsplashPhoto[] };
-    if (!results?.length) return FALLBACK.slice(0, count);
+    if (!results?.length) return [];
 
     return results.map((p) => ({
       id: p.id,
@@ -145,12 +200,13 @@ export async function getGallery(
         name: p.user.name,
         profileUrl: `${p.user.links.html}?${UTM}`,
         photoUrl: `${p.links.html}?${UTM}`,
+        source: 'Unsplash' as const,
       },
       trackDownload: p.links.download_location,
     }));
   } catch {
     // Network failure must never take down the page -- the gallery is decorative.
-    return FALLBACK.slice(0, count);
+    return [];
   }
 }
 
