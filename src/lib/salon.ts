@@ -11,10 +11,11 @@
 export type ServiceId =
   | 'cut-style'
   | 'balayage'
-  | 'gloss-treatment'
   | 'colour-root'
   | 'bridal'
-  | 'blow-dry';
+  | 'nails'
+  | 'skin-care'
+  | 'makeup';
 
 export interface Service {
   id: ServiceId;
@@ -56,16 +57,15 @@ export interface OpeningHours {
 }
 
 export const SALON = {
-  name: 'Iconiq Salon',
-  tagline: 'Hair that behaves on the second day too.',
+  name: 'Iconiq Hair & Beauty Unisex Studio',
+  tagline: 'Premium Hair, Nails, Skin & Make-up Services',
   established: 2019,
   neighbourhood: 'Nawanshahr, Punjab',
   /** Schema.org priceRange: a symbol run or a text range. */
   priceRange: '₹₹',
   currency: 'INR',
   timeZone: 'Asia/Kolkata',
-  // PLACEHOLDER -- replace with the salon's real number before launch.
-  phone: '+91 00000 00000',
+  phone: '+91 79018-95498',
   email: 'hello@iconiq.salon',
   address: {
     street: 'Kulam Road, near Shiv Mandir',
@@ -80,6 +80,7 @@ export const SALON = {
   geo: { latitude: 31.1167, longitude: 76.1333 },
   social: {
     instagram: 'https://www.instagram.com/iconiqsalon',
+    whatsapp: 'https://wa.me/917901895498',
   },
 } as const;
 
@@ -95,72 +96,72 @@ export const HOURS: OpeningHours[] = [
 export const SERVICES: Service[] = [
   {
     id: 'cut-style',
-    name: 'Cut & Style',
-    blurb: 'A consultation first, scissors second. Cut dry so we shape what you actually have.',
-    fromPrice: 400,
+    name: 'Hair Cutting & Styling',
+    blurb: 'Professional haircuts and styling tailored to your face shape and hair type.',
+    fromPrice: 300,
     durationMinutes: 45,
     icon: 'scissors',
   },
   {
     id: 'balayage',
-    name: 'Balayage',
-    blurb: 'Hand-painted, grown-out-gracefully colour. No harsh regrowth line at week six.',
-    fromPrice: 4500,
-    durationMinutes: 180,
+    name: 'Hair Colouring',
+    blurb: 'Expert colour services including balayage, highlights, and full colour treatments.',
+    fromPrice: 1500,
+    durationMinutes: 120,
     icon: 'sparkles',
   },
   {
-    id: 'gloss-treatment',
-    name: 'Gloss & Treatment',
-    blurb: 'Bond-building gloss that resets shine between colour appointments.',
-    fromPrice: 1800,
-    durationMinutes: 60,
+    id: 'colour-root',
+    name: 'Hair Treatment & Keratin',
+    blurb: 'Nourishing treatments and keratin smoothing for healthy, shiny hair.',
+    fromPrice: 1200,
+    durationMinutes: 90,
     icon: 'droplet',
   },
   {
-    id: 'colour-root',
-    name: 'Root Colour',
-    blurb: 'Single-process coverage matched to your existing tone.',
-    fromPrice: 1200,
-    durationMinutes: 90,
-    icon: 'wand',
+    id: 'nails',
+    name: 'Nail Services',
+    blurb: 'Manicure, pedicure, nail art, and gel extensions with premium finishes.',
+    fromPrice: 400,
+    durationMinutes: 60,
+    icon: 'sparkles',
   },
   {
-    id: 'blow-dry',
-    name: 'Blow-dry',
-    blurb: 'Thirty minutes, in and out, good for three days.',
-    fromPrice: 350,
-    durationMinutes: 30,
-    icon: 'wind',
-  },
-  {
-    id: 'bridal',
-    name: 'Bridal & Events',
-    blurb: 'Trial, timeline and day-of styling. We travel within Manhattan.',
-    fromPrice: 12000,
-    durationMinutes: 120,
+    id: 'skin-care',
+    name: 'Skincare & Facials',
+    blurb: 'Professional facials, threading, bleaching, and skin treatments.',
+    fromPrice: 500,
+    durationMinutes: 45,
     icon: 'flower',
+  },
+  {
+    id: 'makeup',
+    name: 'Makeup Services',
+    blurb: 'Professional makeup for special occasions, daily looks, and bridal packages.',
+    fromPrice: 800,
+    durationMinutes: 60,
+    icon: 'wand',
   },
 ];
 
 export const STYLISTS: Stylist[] = [
   {
-    id: 'nadia',
-    name: 'Nadia Okonkwo',
-    title: 'Founder · Colour Director',
-    specialties: ['Balayage', 'Corrective colour', 'Curl'],
+    id: 'founder',
+    name: 'Owner & Founder',
+    title: 'Proprietor',
+    specialties: ['Hair Colouring', 'Styling', 'Treatments'],
   },
   {
-    id: 'marco',
-    name: 'Marco Alvarez',
-    title: 'Senior Stylist',
-    specialties: ['Precision cutting', 'Fringe', 'Short shapes'],
+    id: 'stylist1',
+    name: 'Senior Hair Stylist',
+    title: 'Master Stylist',
+    specialties: ['Cutting', 'Colouring', 'Hair Treatment'],
   },
   {
-    id: 'jun',
-    name: 'Jun Park',
-    title: 'Stylist · Treatment Specialist',
-    specialties: ['Gloss', 'Bond repair', 'Blow-dry'],
+    id: 'specialist',
+    name: 'Beauty Specialist',
+    title: 'Multi-Service Expert',
+    specialties: ['Nails', 'Skincare', 'Makeup', 'Threading'],
   },
 ];
 
